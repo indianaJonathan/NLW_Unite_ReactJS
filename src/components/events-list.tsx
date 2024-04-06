@@ -1,30 +1,26 @@
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MoreHorizontal, Search } from "lucide-react";
-import dayjs from "dayjs";
-import relativeTime from "dayjs/plugin/relativeTime";
-import "dayjs/locale/pt-br";
-import { IconButton } from "./icon-button";
+import { ChangeEvent, useEffect, useState } from "react";
 import { Table } from "./table/table";
 import { TableHeader } from "./table/table-header";
-import { TableCell } from "./table/table-cell";
 import { TableRow } from "./table/table-row";
-import { ChangeEvent, useEffect, useState } from "react";
+import { TableCell } from "./table/table-cell";
+import { useNavigate } from "react-router-dom";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Search } from "lucide-react";
+import { IconButton } from "./icon-button";
 
-dayjs.extend(relativeTime);
-dayjs.locale('pt-br');
-
-type AttendeeType = {
+type EventType = {
     id: string;
-    name: string;
-    email: string;
-    createdAt: Date;
-    checkedInAt?: Date;
+    title: string;
+    details: string;
+    slug: string;
+    maximumAttendees?: number;
+    attendeesAmount: number;
 }
 
-type AttendeeListProps = {
-    eventId: string;
-}
+export function EventsList () {
+    const navigate = useNavigate();
+    const [events, setEvents] = useState<EventType[]>([]);
+    const [total, setTotal] = useState<number>(0);
 
-export function AttendeeList ({ eventId }: AttendeeListProps) {
     const [search, setSearch] = useState<string>(() => {
         const url = new URL(window.location.toString());
         if (url.searchParams.has('search')) return url.searchParams.get('search') ?? '';
@@ -36,9 +32,6 @@ export function AttendeeList ({ eventId }: AttendeeListProps) {
         return 1;
     });
 
-    const [attendees, setAttendees] = useState<AttendeeType[]>([]);
-    const [total, setTotal] = useState<number>(0);
-
     function setCurrentSearch (search: string) {
         const url = new URL(window.location.toString());
         url.searchParams.set('search', search);
@@ -48,7 +41,7 @@ export function AttendeeList ({ eventId }: AttendeeListProps) {
         setCurrentPage(1);
     }
 
-    function handleSearchAttendees (e: ChangeEvent<HTMLInputElement>) {
+    function handleSearchEvents (e: ChangeEvent<HTMLInputElement>) {
         setCurrentSearch(e.currentTarget.value);
         setPage(1);
     }
@@ -67,14 +60,14 @@ export function AttendeeList ({ eventId }: AttendeeListProps) {
     }
 
     useEffect(() => {
-        const url = new URL(`http://localhost:3333/events/${eventId}/attendees`);
+        const url = new URL(`http://localhost:3333/events`);
         url.searchParams.set('pageIndex', `${page - 1}`);
         if (search.length > 0) url.searchParams.set('query', `${search}`);
 
         fetch(url, { method: 'GET' })
             .then(response => response.json())
             .then(data => {
-                setAttendees(data.attendees);
+                setEvents(data.events);
                 setTotal(data.total);
             });
     }, [page, search]);
@@ -83,7 +76,7 @@ export function AttendeeList ({ eventId }: AttendeeListProps) {
         <div className="flex flex-col gap-4">
             <div className="flex gap-3 items-center">
                 <h1 className="text-2xl font-bold">
-                    Participantes
+                    Eventos
                 </h1>
                 <div className="px-3 py-1.5 border border-white/10 rounded-lg text-sm w-72 flex items-center gap-3">
                     <Search className="size-3 text-emerald-300" />
@@ -91,7 +84,7 @@ export function AttendeeList ({ eventId }: AttendeeListProps) {
                         className="bg-transparent flex-1 outline-none h-auto border-none p-0 text-sm focus:ring-0"
                         type="text"
                         placeholder="Buscar participante..."
-                        onChange={handleSearchAttendees}
+                        onChange={handleSearchEvents}
                         value={search}
                     />
                 </div>
@@ -99,9 +92,6 @@ export function AttendeeList ({ eventId }: AttendeeListProps) {
             <Table>
                 <thead>
                     <tr className="border-b border-white/10">
-                        <TableHeader  style={{ width: 48 }}>
-                            <input className="size-4 bg-black/20 rounded border border-white/10" type="checkbox" name="" id="" />
-                        </TableHeader>
                         <TableHeader>
                             <span>
                                 Código
@@ -109,74 +99,49 @@ export function AttendeeList ({ eventId }: AttendeeListProps) {
                         </TableHeader>
                         <TableHeader>
                             <span>
-                                Participante
+                                Evento
                             </span>
                         </TableHeader>
                         <TableHeader>
                             <span>
-                                Data de inscrição
+                                Participantes
                             </span>
-                        </TableHeader>
-                        <TableHeader>
-                            <span>
-                                Data do check-in
-                            </span>
-                        </TableHeader>
-                        <TableHeader style={{ width: 64 }}>
                         </TableHeader>
                     </tr>
                 </thead>
                 <tbody>
-                    { attendees.length > 0 && attendees.map((attendee) => {
+                    { events.length > 0 && events.map((event) => {
                         return (
-                            <TableRow key={crypto.randomUUID()}>
+                            <TableRow key={event.id} style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => { navigate(`/attendees/${event.id}`) }}>
                                 <TableCell>
-                                    <input className="size-4 bg-black/20 rounded border border-white/10" type="checkbox" name="" id="" />
-                                </TableCell>
-                                <TableCell>
-                                    <span>
-                                        { attendee.id }
-                                    </span>
+                                    { event.slug }
                                 </TableCell>
                                 <TableCell>
                                     <div className="flex flex-col gap-1">
-                                        <span className="font-semibold text-white truncate">
-                                            { attendee.name }
+                                        <span className="text-zinc-50 font-semibold">
+                                            { event.title }
                                         </span>
-                                        <span>
-                                            { attendee.email }
+                                        <span className="text-zinc-400">
+                                            { event.details }
                                         </span>
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <span>
-                                        { dayjs(attendee.createdAt).fromNow() }
-                                    </span>
-                                </TableCell>
-                                <TableCell>
-                                        { attendee.checkedInAt ? 
-                                            <span>
-                                                { dayjs(attendee.checkedInAt).fromNow() }
-                                            </span> 
-                                        : 
-                                            <span className="text-zinc-500">
-                                                Não fez check-in
-                                            </span> 
+                                    <div className="flex items-center">
+                                        <span>{ event.attendeesAmount }</span>
+                                        { event.maximumAttendees &&
+                                            <span className="text-zinc-400">/{ event.maximumAttendees }</span>
                                         }
-                                </TableCell>
-                                <TableCell>
-                                    <IconButton transparent>
-                                        <MoreHorizontal className="size-4"/>
-                                    </IconButton>
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         );
-                    })}
-                    { attendees.length === 0 && 
+                    }) }
+                    { events.length === 0 && 
                         <tr className="py-3 px-4 text-sm border-b border-white/10">
-                            <TableCell colSpan={6} style={{ textAlign: "center" }}>
+                            <TableCell colSpan={3} style={{ textAlign: "center" }}>
                                 <span className="text-zinc-400 italic text-center">
-                                    Nenhum participante inscrito no evento
+                                    Nenhum evento encontrado
                                 </span>
                             </TableCell>
                         </tr>
@@ -184,10 +149,10 @@ export function AttendeeList ({ eventId }: AttendeeListProps) {
                 </tbody>
                 <tfoot>
                     <tr>
-                        <TableCell colSpan={3}>
-                            Mostrando {attendees.length} de {total} itens
+                        <TableCell colSpan={1}>
+                            Mostrando {events.length} de {total} itens
                         </TableCell>
-                        <TableCell colSpan={3} className="text-right">
+                        <TableCell colSpan={2} className="text-right">
                             <div className="inline-flex gap-8 items-center">
                                 <span>Página { page } de { Math.ceil(total / 10) }</span>
                                 <div className="flex gap-1.5">

@@ -8,13 +8,12 @@ import { TableHeader } from "./table/table-header";
 import { TableCell } from "./table/table-cell";
 import { TableRow } from "./table/table-row";
 import { ChangeEvent, useEffect, useState } from "react";
-import { attendees as fetchedAttendees } from "../data/attendees";
 
 dayjs.extend(relativeTime);
 dayjs.locale('pt-br');
 
 type AttendeeType = {
-    id: number;
+    id: string;
     name: string;
     email: string;
     createdAt: Date;
@@ -22,23 +21,58 @@ type AttendeeType = {
 }
 
 export function AttendeeList () {
-    const [search, setSearch] = useState<string>("");
-    const [page, setPage] = useState<number>(1);
-    const [attendees, setAttendees] = useState<AttendeeType[]>(fetchedAttendees);
-    const [filteredAttendees, setFilteredAttendees] = useState<AttendeeType[]>(attendees);
+    const [search, setSearch] = useState<string>(() => {
+        const url = new URL(window.location.toString());
+        if (url.searchParams.has('search')) return url.searchParams.get('search') ?? '';
+        return "";
+    });
+    const [page, setPage] = useState<number>(() => {
+        const url = new URL(window.location.toString());
+        if (url.searchParams.has('page')) return Number(url.searchParams.get('page'));
+        return 1;
+    });
 
-    function handleSearchAttendees (e: ChangeEvent<HTMLInputElement>) {
-        setSearch(e.currentTarget.value);
-        setFilteredAttendees(attendees.filter((attendee) => attendee.name.toLocaleLowerCase().includes(search.toLocaleLowerCase())));
+    const [attendees, setAttendees] = useState<AttendeeType[]>([]);
+    const [total, setTotal] = useState<number>(0);
+
+    function setCurrentSearch (search: string) {
+        const url = new URL(window.location.toString());
+        url.searchParams.set('search', search);
+        window.history.pushState({}, "", url);
+
+        setSearch(search);
+        setCurrentPage(1);
     }
 
-    function changePage(desiredPage: number) {
+    function handleSearchAttendees (e: ChangeEvent<HTMLInputElement>) {
+        setCurrentSearch(e.currentTarget.value);
+        setPage(1);
+    }
+
+    function setCurrentPage (desiredPage: number) {
+        const url = new URL(window.location.toString());
+        url.searchParams.set('page', `${desiredPage}`);
+        window.history.pushState({}, "", url);
+
         setPage(desiredPage);
     }
 
+    function changePage(desiredPage: number) {
+        setCurrentPage(desiredPage);
+    }
+
     useEffect(() => {
-        setAttendees(fetchedAttendees);
-    }, []);
+        const url = new URL('http://localhost:3333/events/596f38bd-e31f-4a6e-8d47-b35019bf3c97/attendees');
+        url.searchParams.set('pageIndex', `${page - 1}`);
+        if (search.length > 0) url.searchParams.set('query', `${search}`);
+
+        fetch(url, { method: 'GET' })
+            .then(response => response.json())
+            .then(data => {
+                setAttendees(data.attendees);
+                setTotal(data.total);
+            });
+    }, [page, search]);
     
     return (
         <div className="flex flex-col gap-4">
@@ -49,7 +83,7 @@ export function AttendeeList () {
                 <div className="px-3 py-1.5 border border-white/10 rounded-lg text-sm w-72 flex items-center gap-3">
                     <Search className="size-3 text-emerald-300" />
                     <input
-                        className="bg-transparent flex-1 outline-none h-auto border-none p-0 text-sm"
+                        className="bg-transparent flex-1 outline-none h-auto border-none p-0 text-sm focus:ring-0"
                         type="text"
                         placeholder="Buscar participante..."
                         onChange={handleSearchAttendees}
@@ -88,7 +122,7 @@ export function AttendeeList () {
                     </tr>
                 </thead>
                 <tbody>
-                    { filteredAttendees.slice(((page - 1) * 10), (page * 10)).map((attendee) => {
+                    { attendees.map((attendee) => {
                         return (
                             <TableRow key={crypto.randomUUID()}>
                                 <TableCell>
@@ -115,9 +149,15 @@ export function AttendeeList () {
                                     </span>
                                 </TableCell>
                                 <TableCell>
-                                    <span>
-                                        { dayjs(attendee.checkedInAt).fromNow() }
-                                    </span>
+                                        { attendee.checkedInAt ? 
+                                            <span>
+                                                { dayjs(attendee.checkedInAt).fromNow() }
+                                            </span> 
+                                        : 
+                                            <span className="text-zinc-500">
+                                                Não fez check-in
+                                            </span> 
+                                        }
                                 </TableCell>
                                 <TableCell>
                                     <IconButton transparent>
@@ -131,11 +171,11 @@ export function AttendeeList () {
                 <tfoot>
                     <tr>
                         <TableCell colSpan={3}>
-                            Mostrando 10 de {filteredAttendees.length} itens
+                            Mostrando {attendees.length} de {total} itens
                         </TableCell>
                         <TableCell colSpan={3} className="text-right">
                             <div className="inline-flex gap-8 items-center">
-                                <span>Página { page } de { Math.ceil(filteredAttendees.length / 10) }</span>
+                                <span>Página { page } de { Math.ceil(total / 10) }</span>
                                 <div className="flex gap-1.5">
                                     <IconButton onClick={() => { changePage(1) }} disabled={page === 1}>
                                         <ChevronsLeft className="size-4"/>
@@ -143,10 +183,10 @@ export function AttendeeList () {
                                     <IconButton onClick={() => {changePage(page - 1)}} disabled={page === 1}>
                                         <ChevronLeft className="size-4"/>
                                     </IconButton>
-                                    <IconButton onClick={() => {changePage(page + 1)}} disabled={page === Math.ceil(filteredAttendees.length / 10)}>
+                                    <IconButton onClick={() => {changePage(page + 1)}} disabled={page === Math.ceil(total / 10)}>
                                         <ChevronRight className="size-4"/>
                                     </IconButton>
-                                    <IconButton onClick={() => { changePage(Math.ceil(filteredAttendees.length / 10)) }} disabled={page === Math.ceil(filteredAttendees.length / 10)}>
+                                    <IconButton onClick={() => { changePage(Math.ceil(total / 10)) }} disabled={page === Math.ceil(total / 10)}>
                                         <ChevronsRight className="size-4"/>
                                     </IconButton>
                                 </div>

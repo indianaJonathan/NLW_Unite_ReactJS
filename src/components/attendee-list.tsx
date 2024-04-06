@@ -1,6 +1,45 @@
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MoreHorizontal, Search } from "lucide-react";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+import "dayjs/locale/pt-br";
+import { IconButton } from "./icon-button";
+import { Table } from "./table/table";
+import { TableHeader } from "./table/table-header";
+import { TableCell } from "./table/table-cell";
+import { TableRow } from "./table/table-row";
+import { ChangeEvent, useEffect, useState } from "react";
+import { attendees as fetchedAttendees } from "../data/attendees";
+
+dayjs.extend(relativeTime);
+dayjs.locale('pt-br');
+
+type AttendeeType = {
+    id: number;
+    name: string;
+    email: string;
+    createdAt: Date;
+    checkedInAt?: Date;
+}
 
 export function AttendeeList () {
+    const [search, setSearch] = useState<string>("");
+    const [page, setPage] = useState<number>(1);
+    const [attendees, setAttendees] = useState<AttendeeType[]>(fetchedAttendees);
+    const [filteredAttendees, setFilteredAttendees] = useState<AttendeeType[]>(attendees);
+
+    function handleSearchAttendees (e: ChangeEvent<HTMLInputElement>) {
+        setSearch(e.currentTarget.value);
+        setFilteredAttendees(attendees.filter((attendee) => attendee.name.toLocaleLowerCase().includes(search.toLocaleLowerCase())));
+    }
+
+    function changePage(desiredPage: number) {
+        setPage(desiredPage);
+    }
+
+    useEffect(() => {
+        setAttendees(fetchedAttendees);
+    }, []);
+    
     return (
         <div className="flex flex-col gap-4">
             <div className="flex gap-3 items-center">
@@ -9,109 +48,113 @@ export function AttendeeList () {
                 </h1>
                 <div className="px-3 py-1.5 border border-white/10 rounded-lg text-sm w-72 flex items-center gap-3">
                     <Search className="size-3 text-emerald-300" />
-                    <input className="bg-transparent flex-1 outline-none h-auto border-none p-0 text-sm" type="text" placeholder="Buscar participante..."/>
+                    <input
+                        className="bg-transparent flex-1 outline-none h-auto border-none p-0 text-sm"
+                        type="text"
+                        placeholder="Buscar participante..."
+                        onChange={handleSearchAttendees}
+                        value={search}
+                    />
                 </div>
             </div>
-            <div className="border border-white/10 rounded-lg">
-                <table className="w-full">
-                    <thead>
-                        <tr style={{ width: 48 }} className="border-b border-white/10">
-                            <th className="py-3 px-4 text-sm font-semibold text-left">
-                                <input className="size-4 bg-black/20 rounded border border-white/10" type="checkbox" name="" id="" />
-                            </th>
-                            <th className="py-3 px-4 text-sm font-semibold text-left">
-                                <span>
-                                    Código
-                                </span>
-                            </th>
-                            <th className="py-3 px-4 text-sm font-semibold text-left">
-                                <span>
-                                    Participante
-                                </span>
-                            </th>
-                            <th className="py-3 px-4 text-sm font-semibold text-left">
-                                <span>
-                                    Data de inscrição
-                                </span>
-                            </th>
-                            <th className="py-3 px-4 text-sm font-semibold text-left">
-                                <span>
-                                    Data do check-in
-                                </span>
-                            </th>
-                            <th style={{ width: 64 }} className="py-3 px-4 text-sm font-semibold text-left">
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        { Array.from({ length: 8 }).map((_, index) => {
-                            return (
-                                <tr key={crypto.randomUUID()} className="border-b border-white/10 hover:bg-white/5">
-                                    <td className="py-3 px-4 text-sm text-zinc-300">
-                                        <input className="size-4 bg-black/20 rounded border border-white/10" type="checkbox" name="" id="" />
-                                    </td>
-                                    <td className="py-3 px-4 text-sm text-zinc-300">
-                                        <span>
-                                            12312
+            <Table>
+                <thead>
+                    <tr className="border-b border-white/10">
+                        <TableHeader  style={{ width: 48 }}>
+                            <input className="size-4 bg-black/20 rounded border border-white/10" type="checkbox" name="" id="" />
+                        </TableHeader>
+                        <TableHeader>
+                            <span>
+                                Código
+                            </span>
+                        </TableHeader>
+                        <TableHeader>
+                            <span>
+                                Participante
+                            </span>
+                        </TableHeader>
+                        <TableHeader>
+                            <span>
+                                Data de inscrição
+                            </span>
+                        </TableHeader>
+                        <TableHeader>
+                            <span>
+                                Data do check-in
+                            </span>
+                        </TableHeader>
+                        <TableHeader style={{ width: 64 }}>
+                        </TableHeader>
+                    </tr>
+                </thead>
+                <tbody>
+                    { filteredAttendees.slice(((page - 1) * 10), (page * 10)).map((attendee) => {
+                        return (
+                            <TableRow key={crypto.randomUUID()}>
+                                <TableCell>
+                                    <input className="size-4 bg-black/20 rounded border border-white/10" type="checkbox" name="" id="" />
+                                </TableCell>
+                                <TableCell>
+                                    <span>
+                                        { attendee.id }
+                                    </span>
+                                </TableCell>
+                                <TableCell>
+                                    <div className="flex flex-col gap-1">
+                                        <span className="font-semibold text-white truncate">
+                                            { attendee.name }
                                         </span>
-                                    </td>
-                                    <td className="py-3 px-4 text-sm text-zinc-300">
-                                        <div className="flex flex-col gap-1">
-                                            <span className="font-semibold text-white">
-                                                Participante {index + 1}
-                                            </span>
-                                            <span>
-                                                participante1@mail.com
-                                            </span>
-                                        </div>
-                                    </td>
-                                    <td className="py-3 px-4 text-sm text-zinc-300">
                                         <span>
-                                            7 dias atrás
+                                            { attendee.email }
                                         </span>
-                                    </td>
-                                    <td className="py-3 px-4 text-sm text-zinc-300">
-                                        <span>
-                                            3 dias atrás
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <button className="bg-black/20 border border-white/10 rounded-md p-1.5">
-                                            <MoreHorizontal className="size-4"/>
-                                        </button>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colSpan={3} className="py-3 px-4 text-sm text-zinc-300">
-                                Mostrando 10 de 228 itens
-                            </td>
-                            <td colSpan={3} className="py-3 px-4 text-sm text-zinc-300 text-right">
-                                <div className="inline-flex gap-8 items-center">
-                                    <span>Página 1 de 23</span>
-                                    <div className="flex gap-1.5">
-                                        <button className="bg-white/10 border border-white/10 rounded-md p-1.5">
-                                            <ChevronsLeft className="size-4"/>
-                                        </button>
-                                        <button className="bg-white/10 border border-white/10 rounded-md p-1.5">
-                                            <ChevronLeft className="size-4"/>
-                                        </button>
-                                        <button className="bg-white/10 border border-white/10 rounded-md p-1.5">
-                                            <ChevronRight className="size-4"/>
-                                        </button>
-                                        <button className="bg-white/10 border border-white/10 rounded-md p-1.5">
-                                            <ChevronsRight className="size-4"/>
-                                        </button>
                                     </div>
+                                </TableCell>
+                                <TableCell>
+                                    <span>
+                                        { dayjs(attendee.createdAt).fromNow() }
+                                    </span>
+                                </TableCell>
+                                <TableCell>
+                                    <span>
+                                        { dayjs(attendee.checkedInAt).fromNow() }
+                                    </span>
+                                </TableCell>
+                                <TableCell>
+                                    <IconButton transparent>
+                                        <MoreHorizontal className="size-4"/>
+                                    </IconButton>
+                                </TableCell>
+                            </TableRow>
+                        );
+                    })}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <TableCell colSpan={3}>
+                            Mostrando 10 de {filteredAttendees.length} itens
+                        </TableCell>
+                        <TableCell colSpan={3} className="text-right">
+                            <div className="inline-flex gap-8 items-center">
+                                <span>Página { page } de { Math.ceil(filteredAttendees.length / 10) }</span>
+                                <div className="flex gap-1.5">
+                                    <IconButton onClick={() => { changePage(1) }} disabled={page === 1}>
+                                        <ChevronsLeft className="size-4"/>
+                                    </IconButton>
+                                    <IconButton onClick={() => {changePage(page - 1)}} disabled={page === 1}>
+                                        <ChevronLeft className="size-4"/>
+                                    </IconButton>
+                                    <IconButton onClick={() => {changePage(page + 1)}} disabled={page === Math.ceil(filteredAttendees.length / 10)}>
+                                        <ChevronRight className="size-4"/>
+                                    </IconButton>
+                                    <IconButton onClick={() => { changePage(Math.ceil(filteredAttendees.length / 10)) }} disabled={page === Math.ceil(filteredAttendees.length / 10)}>
+                                        <ChevronsRight className="size-4"/>
+                                    </IconButton>
                                 </div>
-                            </td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
+                            </div>
+                        </TableCell>
+                    </tr>
+                </tfoot>
+            </Table>
         </div>
     );
 }
